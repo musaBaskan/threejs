@@ -1,2 +1,2 @@
-# threejs
+# Threejs
 Three.js example
