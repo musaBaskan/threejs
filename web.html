@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js Dünya Örneği</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script>
+        let scene, camera, renderer;
+        let earth;
+
+        function init() {
+            // Sahne oluşturma
+            scene = new THREE.Scene();
+
+            // Kamera oluşturma
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 3;
+
+            // Renderer oluşturma ve ayarları
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Dünya oluşturma
+            const geometry = new THREE.SphereGeometry(1, 32, 32); // Yarıçap, yatay segment sayısı, dikey segment sayısı
+
+            // Dünya üzerine bir tekstür yükleyerek malzeme oluşturma
+            const textureLoader = new THREE.TextureLoader();
+            const texture = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'); // Dünya dokusu
+            const material = new THREE.MeshPhongMaterial({ map: texture });
+
+            earth = new THREE.Mesh(geometry, material);
+            scene.add(earth);
+
+            // Atmosfer efekti için materyal oluşturma
+            const atmosphereMaterial = new THREE.ShaderMaterial({
+                vertexShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 8.0);
+                        gl_FragColor = vec4(0.6, 0.6, 1.0, 1.0) * intensity;
+                    }
+                `,
+                side: THREE.BackSide,
+                blending: THREE.AdditiveBlending,
+                transparent: true
+            });
+
+            // Atmosfer oluşturma
+            const atmosphereGeometry = new THREE.SphereGeometry(1.02, 32, 32); // Atmosferin yarıçapı dünyadan biraz daha büyük
+            const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+            scene.add(atmosphere);
+
+            // Işık oluşturma
+            const ambientLight = new THREE.AmbientLight(0x404040); // Yumuşak ortam ışığı
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // Yönlendirilmiş ışık
+            directionalLight.position.set(5, 3, 5);
+            scene.add(directionalLight);
+
+            // Mouse hareketlerini dinleme
+            document.addEventListener('mousemove', onDocumentMouseMove);
+
+            // Animasyon döngüsü için çağrı
+            animate();
+        }
+
+        function onDocumentMouseMove(event) {
+            const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+            earth.rotation.y = mouseX * Math.PI;
+            earth.rotation.x = mouseY * Math.PI;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Sahneyi render etme
+            renderer.render(scene, camera);
+        }
+
+        // Sayfa yüklendiğinde başlatma fonksiyonunu çağırma
+        window.onload = init;
+
+        // Sayfa yeniden boyutlandığında kamera ve renderer boyutlarını güncelleme
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
